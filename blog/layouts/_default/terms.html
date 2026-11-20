@@ -1,0 +1,13 @@
+{{ define "main" }}
+<div class="wrap">
+  <header class="list-header">
+    <h1>{{ .Title }}</h1>
+    <p class="list-count">共 {{ len .Pages }} 个标签</p>
+  </header>
+  <div class="tag-cloud">
+    {{ range .Pages }}
+      <a class="tag tag-lg" href="{{ .RelPermalink }}">{{ .Title }}<span class="tag-count">{{ len .Pages }}</span></a>
+    {{ end }}
+  </div>
+</div>
+{{ end }}
