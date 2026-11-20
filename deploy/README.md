@@ -39,7 +39,7 @@ blog/
 
 都在 `blog/hugo.toml` 的 `[params]` 里：
 
-- `title` — 站点名（现在叫「拾光笔记」）
+- `title` — 站点名（现在叫「糖果屋」）
 - `[params.homeInfoParams]` — 首页大标题与那段介绍文字
 - `description` — SEO 描述
 - `author` — 文章署名
