@@ -1,0 +1,13 @@
+<article class="card">
+  <a class="card-link" href="{{ .RelPermalink }}">
+    <div class="card-cover {{ partial "cover-class.html" . }}"><span>{{ with .Params.categories }}{{ index . 0 }}{{ else }}文章{{ end }}</span><i class="wm" aria-hidden="true">{{ substr .Title 0 1 }}</i></div>
+    <div class="card-body">
+      <h3 class="card-title">{{ .Title }}</h3>
+      {{ with .Summary }}<p class="card-summary">{{ . | plainify | truncate 90 "" }}</p>{{ end }}
+      <div class="card-meta">
+        <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2006-01-02" }}</time>
+        <span class="dot">·</span><span>{{ .ReadingTime }} 分钟</span>
+      </div>
+    </div>
+  </a>
+</article>
