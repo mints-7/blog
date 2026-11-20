@@ -1,52 +1,27 @@
 {{ define "main" }}
-{{ $posts := where site.RegularPages "Section" "posts" }}
-<section class="masthead">
-  <div class="masthead-glow" aria-hidden="true"></div>
-  <div class="wrap masthead-inner">
-    <div class="masthead-mark" aria-hidden="true">{{ site.Params.avatarText | default "拾" }}</div>
-    <h1 class="masthead-title">{{ site.Params.tagline | default site.Title }}</h1>
-    <p class="masthead-desc">{{ site.Params.description }}</p>
-    <div class="masthead-actions">
-      <a class="btn btn-solid" href="{{ "posts/" | relURL }}">开始阅读</a>
-      <a class="btn btn-ghost" href="{{ "index.xml" | relURL }}">RSS 订阅</a>
-    </div>
-    <div class="masthead-meta">
-      <span>{{ len $posts }} 篇文章</span>
-      {{ with index $posts 0 }}<span>更新于 {{ .Date.Format "2006-01-02" }}</span>{{ end }}
+<div class="wrap">
+  <section class="hero">
+    <div class="hero-mark" aria-hidden="true">{{ site.Params.avatarText | default "糖" }}</div>
+    <h1 class="hero-title">{{ site.Title }}</h1>
+    <p class="hero-tagline">{{ site.Params.tagline }}</p>
+    <p class="hero-desc">{{ site.Params.description }}</p>
+    {{ $all := where site.RegularPages "Section" "posts" }}
+    <div class="hero-meta">
+      <span>{{ len $all }} 篇文章</span>
+      {{ with index $all 0 }}<span>最近更新 {{ .Date.Format "2006-01-02" }}</span>{{ end }}
       <span>建站于 {{ site.Params.since }}</span>
     </div>
-  </div>
-</section>
-
-<div class="wrap">
-  {{ $pag := .Paginate $posts }}
-  {{ with index $pag.Pages 0 }}
-  <section class="featured">
-    <a class="featured-card" href="{{ .RelPermalink }}">
-      <div class="featured-cover {{ partial "cover-class.html" . }}"><i class="wm" aria-hidden="true">{{ substr .Title 0 1 }}</i></div>
-      <div class="featured-body">
-        <div class="featured-kicker">置顶 · {{ with .Params.categories }}{{ index . 0 }}{{ else }}文章{{ end }}</div>
-        <h2 class="featured-title">{{ .Title }}</h2>
-        {{ with .Summary }}<p class="featured-summary">{{ . | plainify | truncate 160 "" }}</p>{{ end }}
-        <div class="featured-meta">
-          <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2006 年 1 月 2 日" }}</time>
-          <span class="dot">·</span><span>{{ .ReadingTime }} 分钟</span>
-        </div>
-      </div>
-    </a>
   </section>
-  {{ end }}
 
-  <section class="post-grid-section" aria-label="文章列表">
+  <section class="post-list" aria-label="文章列表">
     <div class="section-head">
-      <h2>全部文章</h2>
-      <a class="more-link" href="{{ "posts/" | relURL }}">按列表查看 →</a>
+      <h2>最新文章</h2>
+      <a class="more-link" href="{{ "posts/" | relURL }}">全部文章 →</a>
     </div>
-    <div class="post-grid">
-      {{ range after 1 $pag.Pages }}
-        {{ partial "card.html" . }}
-      {{ end }}
-    </div>
+    {{ $pag := .Paginate (where site.RegularPages "Section" "posts") }}
+    {{ range $pag.Pages }}
+      {{ partial "post-item.html" . }}
+    {{ end }}
     {{ partial "pagination.html" $pag }}
   </section>
 </div>
