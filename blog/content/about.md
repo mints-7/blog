@@ -1,8 +1,7 @@
 ---
-title: "关于"
-description: "关于这个博客和它的作者"
+title: 关于
+description: 关于这个博客和它的作者
 ---
-
 你好，我是 **mints**。
 
 这里是我的个人博客，用来存放那些值得写下来的东西：折腾过的技术、读过的书、以及一些还没想明白的问题。
@@ -19,5 +18,6 @@ description: "关于这个博客和它的作者"
 
 ## 联系
 
-- GitHub：[@yourname](https://github.com/)
-- 邮箱：you@example.com
+- GitHub：[@mints-7](https://github.com/)
+- 邮箱：[mints7@vip.qq.com](mailto:mints7@vip.qq.com)
+
