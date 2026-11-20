@@ -10,6 +10,8 @@ hasCJKLanguage = true
 summaryLength = 80
 timeZone = "Asia/Shanghai"
 capitalizeListTitles = false
+# 允许"日期比现在稍晚"的文章直接发布：手机/服务器时钟有偏差时不会神秘消失。
+buildFuture = true
 
 [pagination]
   pagerSize = 8
