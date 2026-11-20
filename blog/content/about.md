@@ -18,6 +18,6 @@ description: 关于这个博客和它的作者
 
 ## 联系
 
-- GitHub：[@mints-7](https://github.com/)
+- GitHub：[@mints-7](https://github.com/mints-7)
 - 邮箱：[mints7@vip.qq.com](mailto:mints7@vip.qq.com)
 
