@@ -17,3 +17,5 @@ deploy/.ssh/
 # 系统文件
 deploy/shots/
 .DS_Store
+blog/themes/
+preview/
