@@ -19,3 +19,6 @@ deploy/shots/
 .DS_Store
 blog/themes/
 preview/
+
+# 服务器地址（本地保留，不进仓库）
+deploy/.deploy_host
