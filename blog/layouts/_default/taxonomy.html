@@ -1,0 +1,11 @@
+{{ define "main" }}
+<div class="wrap">
+  <header class="list-header">
+    <h1>标签：{{ .Title }}</h1>
+    <p class="list-count">共 {{ len .Pages }} 篇</p>
+  </header>
+  <div class="post-list">
+    {{ range .Pages }}{{ partial "post-item.html" . }}{{ end }}
+  </div>
+</div>
+{{ end }}
