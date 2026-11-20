@@ -2,6 +2,7 @@
 # 备案通过后改回：baseURL = "https://mints.vip/"
 baseURL = "http://8.163.135.192/"
 title = "拾光笔记"
+theme = "hugo-PaperMod"
 languageCode = "zh-cn"
 defaultContentLanguage = "zh"
 enableRobotsTXT = true
@@ -18,12 +19,42 @@ buildFuture = true
 
 [params]
   author = "mints"
-  tagline = "写代码，也写字。"
-  description = "一个关于技术、阅读与日常的个人博客。"
-  avatarText = "拾"
-  footerNote = "用 Hugo 构建，Nginx 托管。"
-  showToc = true
-  since = 2026
+  description = "写代码，也写字。一个关于技术、阅读与日常的个人博客。"
+  defaultTheme = "auto"
+  ShowReadingTime = true
+  ShowShareButtons = false
+  ShowCodeCopyButtons = true
+  ShowToc = true
+  TocOpen = false
+  ShowBreadCrumbs = true
+  ShowPostNavLinks = true
+  ShowRssButtonInSectionTermList = true
+  ShowFullTextinRSS = true
+  hidemeta = false
+  hideSummary = false
+  mainSections = ["posts"]
+  env = "production"
+
+  [params.homeInfoParams]
+    Title = "拾光笔记"
+    Content = "写代码，也写字。一个关于技术、阅读与日常的个人博客。"
+
+  [params.assets]
+    favicon = "favicon.svg"
+    disableHLJS = false
+
+  [params.editPost]
+    URL = "https://github.com/mints-7/blog/edit/main/blog/content"
+    Text = "在 GitHub 上编辑"
+    appendFilePath = true
+
+  [[params.socialIcons]]
+    name = "github"
+    url = "https://github.com/mints-7/blog"
+
+  [[params.socialIcons]]
+    name = "rss"
+    url = "/index.xml"
 
 [markup]
   [markup.highlight]
@@ -49,18 +80,27 @@ buildFuture = true
 
 [menu]
   [[menu.main]]
+    identifier = "posts"
     name = "文章"
     pageRef = "/posts"
     weight = 10
   [[menu.main]]
+    identifier = "tags"
     name = "标签"
     pageRef = "/tags"
     weight = 20
   [[menu.main]]
+    identifier = "archives"
     name = "归档"
     pageRef = "/archives"
     weight = 30
   [[menu.main]]
+    identifier = "search"
+    name = "搜索"
+    pageRef = "/search"
+    weight = 40
+  [[menu.main]]
+    identifier = "about"
     name = "关于"
     pageRef = "/about"
-    weight = 40
+    weight = 50
