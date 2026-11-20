@@ -1,7 +1,7 @@
 # 域名 mints.vip 未备案，阿里云会拦截 80/443 上的域名请求，所以暂时用裸 IP 做站点地址。
 # 备案通过后改回：baseURL = "https://mints.vip/"
 baseURL = "http://8.163.135.192/"
-title = "拾光笔记"
+title = "糖果屋"
 languageCode = "zh-cn"
 defaultContentLanguage = "zh"
 enableRobotsTXT = true
@@ -18,9 +18,9 @@ buildFuture = true
 
 [params]
   author = "mints"
-  tagline = "写代码，也写字。"
+  tagline = "写代码，也写字，屋里有点甜。"
   description = "一个关于技术、阅读与日常的个人博客。"
-  avatarText = "拾"
+  avatarText = "糖"
   footerNote = "用 Hugo 构建，Nginx 托管。"
   showToc = true
   since = 2026
