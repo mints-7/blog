@@ -46,7 +46,7 @@ blog/
 - `[menu.main]` — 顶部导航（文章 / 标签 / 归档 / 搜索 / 关于）
 - 配色改 `blog/assets/css/extended/purple.css` 顶部的 `--accent`（浅色）和 `:root[data-theme="dark"]` 里的 `--accent`（深色）
 
-`baseURL` 现在是 `http://8.163.135.192/`，绑域名后改成 `https://你的域名/`。
+`baseURL` 现在是服务器 IP（本地仓库里别写死，见 `deploy/.deploy_host`），绑域名后改成 `https://你的域名/`。
 
 ## 发布链路
 
@@ -63,7 +63,7 @@ blog/
 
 - Nginx 配置：`/etc/nginx/sites-available/blog.conf`
 - 站点目录：`/var/www/blog`
-- 重载：`ssh -i deploy/.ssh/blog_deploy root@8.163.135.192 'nginx -t && systemctl reload nginx'`
+- 重载：`ssh -i deploy/.ssh/blog_deploy "$(cat deploy/.deploy_host)" 'nginx -t && systemctl reload nginx'`
 
 ## HTTPS
 
@@ -77,7 +77,7 @@ blog/
 ## 域名状态（重要）
 
 `mints.vip` 未备案，阿里云对 80/443 上带域名的请求直接拦截（HTTP 403 / TLS 重置）。
-裸 IP `http://8.163.135.192` 不受影响，Nginx 已拆出默认 server 兜底。
+裸 IP 访问不受影响，Nginx 已拆出默认 server 兜底。
 备案条件、流程与收尾见 [beian.md](beian.md)。
 
 ## 待办
