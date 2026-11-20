@@ -4,7 +4,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-HUGO="$ROOT/.tools/hugo"
+HUGO="$ROOT/.tools/hugo-new"
 
 [ -x "$HUGO" ] || { echo "找不到 Hugo：$HUGO"; exit 1; }
 
