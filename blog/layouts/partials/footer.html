@@ -1,0 +1,12 @@
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <p class="footer-copy">© {{ now.Year }} {{ site.Params.author }} · {{ site.Params.footerNote }}</p>
+    <p class="footer-links">
+      <a href="{{ "index.xml" | relURL }}">RSS</a>
+      <span aria-hidden="true">·</span>
+      <a href="{{ "archives/" | relURL }}">归档</a>
+      <span aria-hidden="true">·</span>
+      <a href="https://github.com/" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </p>
+  </div>
+</footer>

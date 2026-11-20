@@ -1,0 +1,19 @@
+# 本地工具
+.cache/
+.tools/
+.venv/
+
+# Hugo 构建产物
+blog/public/
+blog/resources/
+blog/.hugo_build.lock
+
+# 私密信息：绝对不要提交
+servers.md
+aliyun_ec2_connect_config.json
+deploy/.ssh/
+.memsearch/
+
+# 系统文件
+deploy/shots/
+.DS_Store

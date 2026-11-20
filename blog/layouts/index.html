@@ -1,0 +1,28 @@
+{{ define "main" }}
+<div class="wrap">
+  <section class="hero">
+    <div class="hero-mark" aria-hidden="true">{{ site.Params.avatarText | default "拾" }}</div>
+    <h1 class="hero-title">{{ site.Title }}</h1>
+    <p class="hero-tagline">{{ site.Params.tagline }}</p>
+    <p class="hero-desc">{{ site.Params.description }}</p>
+    {{ $all := where site.RegularPages "Section" "posts" }}
+    <div class="hero-meta">
+      <span>{{ len $all }} 篇文章</span>
+      {{ with index $all 0 }}<span>最近更新 {{ .Date.Format "2006-01-02" }}</span>{{ end }}
+      <span>建站于 {{ site.Params.since }}</span>
+    </div>
+  </section>
+
+  <section class="post-list" aria-label="文章列表">
+    <div class="section-head">
+      <h2>最新文章</h2>
+      <a class="more-link" href="{{ "posts/" | relURL }}">全部文章 →</a>
+    </div>
+    {{ $pag := .Paginate (where site.RegularPages "Section" "posts") }}
+    {{ range $pag.Pages }}
+      {{ partial "post-item.html" . }}
+    {{ end }}
+    {{ partial "pagination.html" $pag }}
+  </section>
+</div>
+{{ end }}

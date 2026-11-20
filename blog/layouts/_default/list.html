@@ -1,0 +1,17 @@
+{{ define "main" }}
+<div class="wrap">
+  <header class="list-header">
+    <h1>{{ .Title }}</h1>
+    {{ with .Content }}<div class="list-intro prose">{{ . }}</div>{{ end }}
+    {{ if eq .Section "posts" }}<p class="list-count">共 {{ len .Pages }} 篇</p>{{ end }}
+  </header>
+
+  {{ $pag := .Paginate .Pages }}
+  <div class="post-list">
+    {{ range $pag.Pages }}
+      {{ partial "post-item.html" . }}
+    {{ end }}
+  </div>
+  {{ partial "pagination.html" $pag }}
+</div>
+{{ end }}

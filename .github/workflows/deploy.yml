@@ -1,0 +1,63 @@
+name: build-and-deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "blog/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HUGO_VERSION: "0.152.2"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Hugo
+        run: |
+          set -euo pipefail
+          curl -sSL "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-amd64.tar.gz" -o /tmp/hugo.tgz
+          sudo tar -xzf /tmp/hugo.tgz -C /usr/local/bin hugo
+          hugo version
+
+      - name: Build site
+        run: hugo --source blog --gc --minify --cleanDestinationDir
+
+      - name: Prepare SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Upload and switch
+        env:
+          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          SSH_OPTS=(-i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20)
+          ssh "${SSH_OPTS[@]}" "$SSH_USER@$SSH_HOST" 'rm -rf /var/www/blog.new && mkdir -p /var/www/blog.new'
+          tar czf - -C blog/public . | ssh "${SSH_OPTS[@]}" "$SSH_USER@$SSH_HOST" 'tar xzf - -C /var/www/blog.new'
+          ssh "${SSH_OPTS[@]}" "$SSH_USER@$SSH_HOST" '
+            set -e
+            rm -rf /var/www/blog.old
+            if [ -d /var/www/blog ]; then mv /var/www/blog /var/www/blog.old; fi
+            mv /var/www/blog.new /var/www/blog
+            rm -rf /var/www/blog.old
+            chown -R www-data:www-data /var/www/blog
+          '
+          echo "已发布到 http://$SSH_HOST/"
