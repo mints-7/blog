@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-HUGO="$ROOT/.tools/hugo"
+HUGO="$ROOT/.tools/hugo-new"
 SITE="$ROOT/blog"
 HOST="root@8.163.135.192"
 REMOTE_ROOT="/var/www/blog"
