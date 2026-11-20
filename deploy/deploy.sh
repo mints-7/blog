@@ -5,7 +5,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HUGO="$ROOT/.tools/hugo-new"
 SITE="$ROOT/blog"
-HOST="root@8.163.135.192"
+# 服务器地址不写进仓库（仓库是 public 的），放在 deploy/.deploy_host 里
+HOST_FILE="$ROOT/deploy/.deploy_host"
+HOST="${BLOG_HOST:-$(cat "$HOST_FILE" 2>/dev/null || true)}"
+[ -n "$HOST" ] || { echo "缺少服务器地址：请创建 deploy/.deploy_host（内容示例：root@1.2.3.4），或设置 BLOG_HOST 环境变量"; exit 1; }
 REMOTE_ROOT="/var/www/blog"
 SSH_OPTS=(-i "$ROOT/deploy/.ssh/blog_deploy"
           -o IdentitiesOnly=yes
