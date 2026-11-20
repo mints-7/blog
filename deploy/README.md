@@ -1,6 +1,6 @@
 # 博客使用说明
 
-站点源码在 `blog/`，Hugo 二进制在 `.tools/hugo`，部署脚本在 `deploy/deploy.sh`。
+站点源码在 `blog/`（主题：PaperMod，紫色定制），Hugo 二进制在 `.tools/hugo-new`（0.170.1），部署脚本在 `deploy/deploy.sh`。
 
 > 日常写作看这份就够：[../写作指南.md](../写作指南.md)
 > 三个脚本：`./new-post.sh "标题"` 新建、`./preview.sh` 预览、`./deploy/deploy.sh` 发布
@@ -9,8 +9,8 @@
 
 ```bash
 cd blog
-../.tools/hugo new content posts/文章标题.md   # 新建，默认 draft: true
-../.tools/hugo server -D                       # 本地预览 http://localhost:1313
+../.tools/hugo-new new content posts/文章标题.md   # 新建，默认 draft: true
+../.tools/hugo-new server -D                       # 本地预览 http://localhost:1313
 ```
 
 写完把 front matter 里的 `draft` 改成 `false`，然后发布：
@@ -27,9 +27,11 @@ blog/
 ├── content/
 │   ├── posts/             # 文章（Markdown）
 │   ├── about.md           # 关于页
-│   └── archives/_index.md # 归档页
-├── layouts/               # 模板
-├── assets/css|js/         # 样式与脚本（构建时压缩合并）
+│   ├── archives.md        # 归档页（layout: archives）
+│   └── search.md          # 搜索页（layout: search）
+├── themes/hugo-PaperMod/  # 主题（本地保留，不入 git，CI 自动下载）
+├── assets/css/extended/
+│   └── purple.css         # 紫色定制样式（唯一需要改的样式文件）
 └── static/                # 原样拷贝的文件（favicon 等）
 ```
 
@@ -38,11 +40,11 @@ blog/
 都在 `blog/hugo.toml` 的 `[params]` 里：
 
 - `title` — 站点名（现在叫「拾光笔记」）
-- `tagline` — 首页副标题
+- `[params.homeInfoParams]` — 首页大标题与那段介绍文字
 - `description` — SEO 描述
-- `avatarText` — 左上角方块里的字（现在「拾」）
-- `author` — 页脚署名
-- `since` — 建站年份
+- `author` — 文章署名
+- `[menu.main]` — 顶部导航（文章 / 标签 / 归档 / 搜索 / 关于）
+- 配色改 `blog/assets/css/extended/purple.css` 顶部的 `--accent`（浅色）和 `:root[data-theme="dark"]` 里的 `--accent`（深色）
 
 `baseURL` 现在是 `http://8.163.135.192/`，绑域名后改成 `https://你的域名/`。
 
