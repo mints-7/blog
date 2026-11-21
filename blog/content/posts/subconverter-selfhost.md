@@ -1,132 +1,111 @@
 ---
-title: "从零搭一套自己的订阅转换服务"
-date: 2026-11-22T01:10:00+08:00
-summary: "公共转换站会记录你的订阅、会限速、也会挂。这篇从机器准备、Docker 起 subconverter 和 sub-web，到 Nginx 反代、HTTPS、限流加固，把一套只用给自己的订阅转换服务搭完。"
+title: "自己搭一个订阅转换，顺手写了个一键脚本"
+date: 2026-11-22T01:40:00+08:00
+summary: "公共转换站要你把订阅链接贴进去，那玩意儿等于账号密码。于是我在自己的小机器上跑了 subconverter + sub-web，又写了个脚本，一条命令装完。"
 tags: ["Docker", "Nginx", "自建服务", "HTTPS"]
 categories: ["技术"]
 ---
 
-公共订阅转换站用起来很省事，但它同时握着两样最不该外借的东西：你的订阅链接（等于账号密码），和你每次转换的节点列表。它还可能半夜挂掉、给你限速、在结果里插广告。
+之前一直用公共的订阅转换站。省事是真省事，可你得把订阅链接原样贴进去，那东西等于账号密码；再加上隔三差五抽风、限速、有时候还给你塞点广告节点，用着别扭。
 
-所以这次的活是：在一台自己的小机器上，把 [subconverter](https://github.com/tindy2013/subconverter)（转换后端）和 [sub-web](https://github.com/CareyWang/sub-web)（网页界面）跑起来，只给自己用。
+上周终于动手在自己机器上搭了一套，顺手写了个脚本扔 GitHub 上。想快的直接看第一段，想弄明白每一步在干嘛的往后翻。
 
-> 本文只讲软件部署。服务请自用，不要开放给陌生人；在国内服务器上对外提供这类服务，还涉及备案和运营商政策，自己心里要有数。
+> 先说一句：这套东西自己用没问题，别拿去公开给一群人用。国内服务器上用域名对外提供服务，还得先把备案走完。
 
-## 一、先把三个概念分清
+## 懒人版：一条命令
 
-| 名字 | 是什么 | 跑在哪 |
-| --- | --- | --- |
-| subconverter | 真正的转换引擎，提供 `/sub?target=...&url=...` 接口 | 容器内 25500 端口 |
-| sub-web | 一个纯前端页面，帮你拼出上面那条链接 | 容器内 80 端口 |
-| 远程配置 | 一份 ini，决定分组和分流规则 | 一个 URL，或者服务器上的文件 |
+```bash
+curl -fsSL \
+  https://raw.githubusercontent.com/mints-7/substack/main/install.sh \
+  | sudo bash
+```
 
-请求链路是这样的：
+跑完屏幕上会打一个地址，浏览器打开就是转换页面。后端默认只绑 `127.0.0.1`，外网碰不到，只有 Nginx 能进。
+
+有域名的话多两个参数：
+
+```bash
+curl -fsSL \
+  https://raw.githubusercontent.com/mints-7/substack/main/install.sh \
+  | sudo bash -s -- --domain sub.example.com --email you@example.com
+```
+
+域名要提前解析到这台机器，80 和 443 在安全组里放行，不然最后 certbot 那步会卡住。脚本会写 Nginx 反代、签证书，装完直接 `https://你的域名`。
+
+脚本源码在 [mints-7/substack](https://github.com/mints-7/substack)，一百多行，能看懂再跑，不放心就照着下面自己敲。
+
+## 这套东西其实就三件
+
+真正干活的是 subconverter，一个转换引擎，提供 `/sub?target=clash&url=...` 这种接口；sub-web 是个纯前端页面，帮你把上面那条长链接拼出来；远程配置是一份 ini，决定分组和分流规则。
+
+请求是这么走的：
 
 ```txt
 浏览器
   ↓
-sub-web（静态页，拼链接）
+sub-web（拼链接的静态页）
   ↓
-subconverter（/sub 转换接口）
+subconverter（/sub 接口）
   ↓
-机场订阅 / 单节点链接
-  ↓
-Clash / Surge / sing-box 配置
+机场订阅 / 单个节点链接
 ```
 
-最常踩的坑就藏在这里：**sub-web 只是前端，它自己没有 `/sub` 接口**。所以「后端地址」永远填 subconverter 的地址，不是你在浏览器里打开的那个页面地址。
+第一次搭最容易栽的地方在这：sub-web 自己没有 `/sub` 接口。生成链接报 404，十有八九是把前端地址填到了「后端地址」那一栏。
 
-## 二、准备工作
+## 自己敲一遍
 
-### 1. 机器
+### 机器
 
-1 核 1G 就能跑，两个容器空载加起来一百多兆内存；镜像本身两百兆上下。我用的是 2 核 1.7G 的 Debian 13，装完还剩一大半。
+1 核 1G 能跑。我测试用的这台是 2 核 1.7G 的 Debian 13，两个容器空载加起来不到 5MB 内存，比我预想的省。
 
-### 2. 系统与 Docker
-
-```bash
-apt update && apt upgrade -y
-apt install -y curl ca-certificates gnupg
-```
-
-装 Docker 有两条路，先试官方源：
+先装 Docker。Debian 自带的包就够用，不用折腾官方源：
 
 ```bash
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
-chmod a+r /etc/apt/keyrings/docker.asc
-
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
-https://download.docker.com/linux/debian $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
-  > /etc/apt/sources.list.d/docker.list
-
-apt update
-apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-```
-
-如果 `apt update` 对新 codename（比如 trixie）报 404，说明官方源还没跟上，用发行版自带的就行：
-
-```bash
-apt install -y docker.io
-```
-
-这样装出来的版本也能用，只是后面把 `docker compose` 换成一条条 `docker run`。
-
-验证：
-
-```bash
-docker --version
+apt update && apt install -y docker.io
 systemctl enable --now docker
 ```
 
-### 3. 建目录
+**这里有个坑**。国内直连 Docker Hub 基本拉不动，我第一次跑卡了二十分钟，最后是 `context deadline exceeded`。解决办法是配个镜像加速：
+
+```bash
+cat > /etc/docker/daemon.json <<'EOF'
+{
+  "registry-mirrors": ["https://docker.1panel.live", "https://docker.xuanyuan.me"]
+}
+EOF
+systemctl restart docker
+```
+
+地址会失效，哪天拉不动了换一个就行。脚本里我写了「先直连试 90 秒，不行就自动换加速器重试一次」，手工装的话自己盯着点。
+
+### 起后端
 
 ```bash
 mkdir -p /opt/substack && cd /opt/substack
-```
 
-后面所有配置都放在这里，备份的时候打包一个目录就够。
-
-### 4. 域名与证书（可选，但强烈建议）
-
-- 给个二级域名，比如 `sub.example.com`，A 记录指向这台机器；
-- 云厂商安全组放行 80/443；
-- 国内机器必须先备案，否则 80/443 上的域名请求会被拦（这事我踩过，见[部署笔记](/posts/deploy-notes/)）。
-
-只想局域网自娱自乐的话，跳过这步，直接用 `http://内网IP:58080` 访问。
-
-## 三、起后端：subconverter
-
-先拉起来看看能不能跑：
-
-```bash
 docker run -d --name subconverter --restart always \
   -p 127.0.0.1:25500:25500 \
   tindy2013/subconverter:latest
 ```
 
+`-p 127.0.0.1:25500:25500` 是故意的，只绑回环。写成 `-p 25500:25500` 就等于把一个没鉴权的接口挂在公网，用不了多久就会被别人的脚本刷。
+
+试试起来没有：
+
 ```bash
 curl -s http://127.0.0.1:25500/version
-# subconverter v0.9.x backend
+# subconverter v0.9.0-a0d4eab backend
 ```
 
-注意 `-p 127.0.0.1:25500:25500`：这里故意把端口只绑在回环地址上，外网访问不到，必须走 Nginx 反代。直接 `-p 25500:25500` 等于把一个无鉴权的转换接口挂在公网上，很快就会被别人的脚本刷满。
-
-### 写一份自己的 pref.ini
-
-新建 `/opt/substack/pref.ini`：
+然后写一份 `/opt/substack/pref.ini`：
 
 ```ini
 [common]
-; 防止别人通过接口读你机器上的本地文件和订阅
 api_mode=true
-; 改成一串随机字符，别用示例里的 password
-api_access_token=换成32位随机串
-; 开缓存，少重复拉订阅
+api_access_token=换成一串随机的
 enable_cache=true
 cache_subscription=300
 cache_config=3600
-; 过滤掉机场塞进来的"剩余流量""官网地址"这类假节点
 exclude_remarks=(到期|剩余流量|官网|订阅|过期)
 log_level=info
 
@@ -139,13 +118,9 @@ max_pending_connections=200
 max_concurrent_threads=4
 ```
 
-几条值得说明的：
+`api_mode` 打开以后，读本地文件那类接口要带 token，普通的 `url=` 转换不受影响。`exclude_remarks` 是个正则，把机场塞进来的「剩余流量」「官网地址」这些假节点滤掉，客户端里清爽不少。`max_concurrent_threads` 别贪，1G 内存开到 4 就够了。
 
-- `api_mode=true` 之后，读取本地订阅、本地文件这类操作必须带 `&token=`；普通的 `&url=` 转换不受影响。
-- `exclude_remarks` 用正则，机场那些「剩余流量」「官网」节点会被剔掉，客户端里就清爽了。
-- `max_concurrent_threads` 控制转换并发，1G 内存的机器开到 4 足够，别贪。
-
-改完重建容器，把配置挂进去：
+挂载重建：
 
 ```bash
 docker rm -f subconverter
@@ -155,82 +130,64 @@ docker run -d --name subconverter --restart always \
   tindy2013/subconverter:latest
 ```
 
-> 也可以不挂载，用 `curl -F "data=@pref.ini" "http://127.0.0.1:25500/updateconf?type=form&token=你的token"` 上传。但容器一重建就丢，还是挂载省心。
-
-### 测一次真实转换
-
-拿你自己的订阅链接试。注意 `url` 参数必须做 URL 编码，手工拼很容易漏：
+拿自己的订阅试一次。`url` 参数必须 URL 编码，手拼特别容易漏：
 
 ```bash
-SUB='https://example.com/api/v1/client/subscribe?token=xxxxxx'
-ENC=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1],safe=''))" "$SUB")
-
-curl -s "http://127.0.0.1:25500/sub?target=clash&url=$ENC" | head -20
+SUB='https://example.com/api/v1/client/subscribe?token=xxxx'
+ENC=$(python3 -c "import urllib.parse,sys; \
+print(urllib.parse.quote(sys.argv[1],safe=''))" "$SUB")
+curl -s "http://127.0.0.1:25500/sub?target=clash&url=$ENC" | head -5
 ```
 
-输出里能看到 `proxies:`、`proxy-groups:`、`rules:`，就说明链路通了。
+我用一条测试链接跑出来的结果是：
 
-如果返回 `No nodes were resolved`，一般是订阅拉不到：链接过期、需要特定 UA、或者机器出不去。可以先单独验一下订阅本身：
-
-```bash
-curl -s -o /dev/null -w '%{http_code}\n' "$SUB"
+```txt
+Proxy:
+  - {name: Example1, server: 192.168.100.1, port: 8888, type: ss, cipher: aes-128-gcm, password: test}
 ```
 
-## 四、起前端：sub-web
+能出这个就通了。
+
+### 起前端
 
 ```bash
 docker run -d --name subweb --restart always \
-  -p 127.0.0.1:58080:80 \
-  -e VITE_SUBCONVERTER_DEFAULT_BACKEND=https://sub.example.com \
+  -p 58080:80 \
+  -e VITE_SUBCONVERTER_DEFAULT_BACKEND=\
+http://你的IP:25500 \
   careywong/subweb:latest
 ```
 
-`VITE_SUBCONVERTER_DEFAULT_BACKEND` 就是页面上那个「后端地址」，写裸域名、`/sub`、`/sub?` 都能识别。还没配域名的话，先写成 `http://内网IP:25500` 在局域网里试。
+注意镜像名是 `subweb`，不是老教程里的 `sub-web`。环境变量就是页面上那个「后端地址」。
 
-本地先看一眼：
+要是这时候后端还只绑在 `127.0.0.1`，浏览器其实连不上它。所以要么先在局域网里把 IP 放开测，要么直接走下一步的 Nginx：反代之后前后端同域，后端就能安心缩回本机。
 
-```bash
-curl -sI http://127.0.0.1:58080/ | head -1
-```
+### 套上 Nginx 和证书
 
-## 五、Nginx 反代 + HTTPS
-
-我推荐**前后端同一个域名**，前端放 `/`，后端放 `/sub`。这样浏览器里是同源请求，完全绕开 CORS 那些麻烦事。
+我推荐前后端放同一个域名，前端吃 `/`，后端吃 `/sub`。这样浏览器里是同源请求，跨域那些破事根本不用管。
 
 ```nginx
-# /etc/nginx/sites-available/sub.conf
-limit_req_zone $binary_remote_addr zone=subzone:10m rate=2r/s;
+# /etc/nginx/conf.d/substack-limit.conf
+limit_req_zone $binary_remote_addr zone=substack:10m rate=2r/s;
+```
 
+```nginx
+# /etc/nginx/sites-available/substack.conf
 server {
     listen 80;
     server_name sub.example.com;
-
-    location /.well-known/acme-challenge/ { root /var/www/html; }
-    location / { return 301 https://$host$request_uri; }
-}
-
-server {
-    listen 443 ssl;
-    http2 on;
-    server_name sub.example.com;
-
-    ssl_certificate     /etc/letsencrypt/live/sub.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/sub.example.com/privkey.pem;
-
     client_max_body_size 2m;
 
-    # 前端静态页
     location / {
         proxy_pass http://127.0.0.1:58080;
-        proxy_set_header Host              $host;
-        proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # 转换接口，单独限流
     location /sub {
-        limit_req zone=subzone burst=20 nodelay;
+        limit_req zone=substack burst=20 nodelay;
         proxy_pass http://127.0.0.1:25500;
         proxy_read_timeout 30s;
         add_header Cache-Control "no-store";
@@ -242,68 +199,43 @@ server {
 }
 ```
 
-`http2 on;` 是 nginx 1.25.1 之后的新写法，老版本改成 `listen 443 ssl http2;`。
-
-启用并签证书：
+启用、检查、签证书：
 
 ```bash
-ln -s /etc/nginx/sites-available/sub.conf /etc/nginx/sites-enabled/
+ln -s /etc/nginx/sites-available/substack.conf /etc/nginx/sites-enabled/
 nginx -t && systemctl reload nginx
-
 apt install -y certbot python3-certbot-nginx
 certbot --nginx -d sub.example.com
 ```
 
-> 首次签证书时要先有能用的 80 端口。如果 443 那段还没证书文件，nginx -t 会报错，可以先把 443 的 server 块注释掉，签完再打开。
+别学我一开始那样，上来就把 443 的 server 块写死，证书还没签出来 `nginx -t` 直接报错。先跑 80，让 certbot 自己往里加 ssl 段最省事。
 
-然后打开 `https://sub.example.com`，后端地址填 `https://sub.example.com`，生成链接试导入。
+## 别让它裸奔
 
-## 六、加固：别让它变成公共转换站
+搭完能用了，还有三件事值得做，不做迟早后悔：
 
-这套东西一旦裸奔，最可能的结果不是被攻击，而是被当成免费接口刷，跑满你机器的带宽和 CPU。
+1. **后端只绑回环**，就是上面那个 `-p 127.0.0.1:25500:25500`，别改。
+2. **token 换成随机串**，`openssl rand -hex 16` 生成一个。
+3. **限流**，就是配置里那个 `limit_req`，2 r/s、突发 20，正常自己用完全够，脚本刷子顶不住。
 
-已经做了三件：
+至于给 `/sub` 加 Basic 认证，我不建议。客户端更新订阅时带账号密码很别扭，限流加 token 已经能挡掉绝大多数顺手白嫖的。
 
-1. **只绑回环**：`-p 127.0.0.1:25500:25500`，外网碰不到后端；
-2. **api_mode + token**：本地文件类接口需要凭据；
-3. **limit_req 限流**：2 r/s，突发 20。
+## 我踩到的几个坑
 
-还可以再加两件：
+**镜像拉不下来**。前面说了，卡了二十分钟。加速器配好之后，`docker pull` 几十秒就完事。
 
-```nginx
-# 只放行自己的常用出口（可选，手机换网会失效，谨慎）
-# location /sub {
-#     allow 1.2.3.4;
-#     deny all;
-# }
-```
+**域名被拦**。我这台是广州的机器，域名备案还没下来，80/443 上带域名的请求直接被拦成 403。所以现在线上还是 `http://IP`，备案过了再切。这事儿纯静态博客也躲不过，跟转不转换没关系。
 
-- 把 `/updateconf`、`/getprofile` 这类接口也纳入白名单，或者干脆不在公网暴露；
-- 用 `docker logs --tail 200 subconverter` 时不时看一眼访问日志，有没有陌生 IP 在刷。
+**生成链接 404**。第一次就栽在这，后端地址填成了前端地址。
 
-不建议给 `/sub` 加 Basic 认证：客户端订阅时带凭据很别扭，限流加 token 已经够挡住绝大多数顺手白嫖。
+**控制台报 CORS**。前后端拆成两个子域，浏览器拦。后来合成一个域名走 `/sub`，世界清净了。
 
-## 七、验收清单
+**`No nodes were resolved`**。订阅本身拉不到，可能过期了、要特定 UA，或者机器出不去。先 `curl` 一下订阅本身。
 
-搭完按这五条过一遍，都绿了才算真的可用：
+**短链接那一栏用不了**。sub-web 的短链是调外部服务的，不是自带功能，别指望。不想折腾就用长链接，或者用 `/getprofile` 把参数收进一个文件。
 
-- 访问 `https://sub.example.com/version`，返回里带 `backend`
-- 页面上生成一条 Clash 链接，客户端能正常导入
-- 客户端更新订阅不报错
-- 换一份远程配置（分组、规则）后，生成结果跟着变
-- 手机切到移动网络后订阅仍能更新（确认没有误伤 IP 白名单）
+## 最后
 
-## 八、踩坑记录
+脚本在 [github.com/mints-7/substack](https://github.com/mints-7/substack)，支持 `--domain`、`--no-nginx`、`--mirror`、`--uninstall` 这些参数，`--dry-run` 可以先看它想干什么再决定跑不跑。有 bug 去开 issue。
 
-1. **生成的链接 404**。八成是「后端地址」填成了前端页面地址。sub-web 自己不带 `/sub`，填它当然 404。
-2. **浏览器控制台报 CORS**。前后端放在两个不同子域，浏览器就会拦。要么同域用 `/sub` 反代（本文做法），要么确认后端响应头里带了 `Access-Control-Allow-Origin`。
-3. **`No nodes were resolved`**。订阅本身拉不到：链接过期、机场要求特定 UA，或者机器到机场的路不通。先用 `curl` 直接拉订阅验证。
-4. **拉远程配置 / 规则集超时**。很多示例配置放在 GitHub raw 上，国内不稳。把 ini 存到本机，`&config=` 改成服务器路径，或者换成国内镜像。
-5. **短链接那一栏用不了**。sub-web 的短链依赖外部 myurls 服务，不是自带的。不想折腾就忽略，用长链接；或者用 subconverter 的配置档案 `/getprofile?name=...&token=...` 把长参数收进一个文件。
-6. **节点名里 emoji 乱码**。链接参数要 URL 编码（`|` 要编成 `%7C`）。sub-web 已经处理了，手拼链接才会出问题。
-7. **内存慢慢涨**。把 `max_pending_connections` 和 `max_concurrent_threads` 调小，或者给容器加 `--memory=256m`。
-8. **怎么更新**。`docker pull` 拉新镜像，`docker rm -f subconverter subweb` 删旧容器，再把上面两条 `docker run` 重执行一遍；用 compose 则是 `docker compose pull && docker compose up -d`。
-
-## 九、一句话总结
-
-接口只绑本机，外面套一层 HTTPS 和限流，链接里带 token——做到这三件，它才算是「你自己的」转换服务，而不是又一个挂在公网上的免费接口。
+整套东西最值钱的地方其实不是「转换」，而是那个只在你自己机器上跑、谁都调不走的订阅链接。
