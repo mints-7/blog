@@ -1,7 +1,7 @@
 {{ define "main" }}
 <div class="wrap">
   <section class="hero">
-    <div class="hero-mark" aria-hidden="true">{{ site.Params.avatarText | default "糖" }}</div>
+    <img class="hero-mark" src="{{ "images/logo/c-badge-monogram.svg" | relURL }}" alt="" width="56" height="56">
     <h1 class="hero-title">{{ site.Title }}</h1>
     <p class="hero-tagline">{{ site.Params.tagline }}</p>
     <p class="hero-desc">{{ site.Params.description }}</p>
