@@ -717,3 +717,9 @@ main { min-height: 60vh; padding: 3rem 0 5rem; }
   html { scroll-behavior: auto; }
   * { transition: none !important; animation: none !important; }
 }
+
+/* 代码块比正文宽一点，长命令不至于被切掉 */
+@media (min-width: 760px) {
+  .prose pre { margin-left: -2rem; margin-right: -2rem; }
+}
+.prose pre code { font-size: 0.78rem; }
