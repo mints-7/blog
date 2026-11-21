@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="糖果屋">
+  <path d="M32 9 58 35H6Z" fill="#7c3aed"/>
+  <rect x="12" y="33" width="40" height="23" rx="6" fill="#ede9fe"/>
+  <path d="M27 56V43a5 5 0 0 1 10 0v13Z" fill="#a78bfa"/>
+  <path d="M29.5 45.5h9M29.5 50h9" stroke="#ede9fe" stroke-width="1.8" opacity=".9"/>
+  <circle cx="18.5" cy="40" r="3" fill="#a78bfa"/>
+  <circle cx="45.5" cy="40" r="3" fill="#a78bfa"/>
+</svg>
